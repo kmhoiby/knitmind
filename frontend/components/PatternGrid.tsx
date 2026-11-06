@@ -1,72 +1,88 @@
-
 "use client";
 
-/*
-React-hook lets ua save data that changes.
-When a state changes, React redraws the component.
-*/
-import { useState } from "react";
+import { usePatternGrid } from "@/hooks/usePatternGrid";
+import PatternToolbar from "@/components/PatternToolbar";
+
 export default function PatternGrid() {
-    /*
-    Decides the size of the grid.
-    This can later come from the user settings.
-    */
-    const rows = 30;
-    const cols = 30;
+  // Destructure everything we need from our custom hook
+  const {
+    rows,
+    cols,
+    grid,
+    activeColor,
+    setActiveColor,
+    isMouseDown,
+    setIsMouseDown,
+    cellSize,
+    setCellSize,
+    handleResize,
+    paintCell,
+    exportToJson,
+    importFromJson,
+    clearGrid,
+  } = usePatternGrid();
 
-    /*
-    Crates a 30x30-array.
-    false = white mask
-    true = colored mask
-    This is our pattern.
-    */
-    const [grid, setGrid] = useState(() =>
-        Array(rows)
-            .fill(null)
-            .map(() => Array(cols).fill(false))
-    );
+  return (
+    <div
+      className="flex flex-col gap-4 select-none p-6"
+      // onMouseUp ensures drawing stops as soon as the user releases the mouse button anywhere on screen
+      onMouseUp={() => setIsMouseDown(false)}
+    >
+      {/* Render the toolbar at the top and pass down required functions */}
+      <PatternToolbar
+        activeColor={activeColor}
+        setActiveColor={setActiveColor}
+        rows={rows}
+        cols={cols}
+        handleResize={handleResize}
+        cellSize={cellSize}
+        setCellSize={setCellSize}
+        exportToJson={exportToJson}
+        importFromJson={importFromJson}
+        clearGrid={clearGrid}
+      />
 
-    /*
-    Gets called when the user clicks on a cell.
-    If the cell is white it becomes blue, and opposite.
-    */
-    const toggleCell = (row: number, col: number) => {
-
-        /*
-        Creates a copy of the grid.
-        React does not like that we change the state directly, therefore we always save a copy first.
-        */
-        const newGrid = grid.map((r, rIdx) =>
-            rIdex === row ? r.map((cell, cIdx) => (cIdx === col ? !cell : cell)) : r);
-        /*
-        Update the state.
-        */
-        setGrid(newGrid);
-    };
-
-    return (
+      {/* THE PATTERN GRID (DRAWING CANVAS) */}
+      <div className="overflow-auto border border-gray-300 p-2 bg-white rounded-xl shadow-sm inline-block">
         <div
-            style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${cols}, 20px)`,
-                gap: "1px",
-            }}
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`, // Dynamically set number of columns
+            gap: "1px",
+            backgroundColor: "#e5e7eb", // Color of grid lines between cells
+          }}
         >
-            {grid.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
-                    <div
-                    key={`${rowIndex}-${colIndex}`}
-                    onClick={() => toggleCell(rowIndex, colIndex)}
-                    style={{
-                        width: "20px",
-                        height: "20px",
-                        backgroundColor: cell ? "#1e40af" : "#ffffff",
-                        boarder: "1px solid #d1d5db",
-                        cursor: "pointer"
-                        }}
-                    />
-                ))
-            )}
+          {/*
+            Loop through the 2D array (grid).
+            First loop iterates through each row (rowIndex), inner loop iterates through each cell in that row (colIndex).
+          */}
+          {grid.map((row, rowIndex) =>
+            row.map((cellColor, colIndex) => (
+              <div
+                key={`${rowIndex}-${colIndex}`} // Unique key required by React for list rendering
+                // Triggered when user presses the mouse button down on a cell:
+                onMouseDown={() => {
+                  setIsMouseDown(true);
+                  paintCell(rowIndex, colIndex);
+                }}
+                // Triggered when the mouse enters a cell while the mouse button is held down (drag-to-paint):
+                onMouseEnter={() => {
+                  if (isMouseDown) {
+                    paintCell(rowIndex, colIndex);
+                  }
+                }}
+                style={{
+                  width: `${cellSize}px`,
+                  height: `${cellSize}px`,
+                  backgroundColor: cellColor, // Color stored in this specific cell
+                  cursor: "crosshair",
+                }}
+                className="transition-opacity hover:opacity-80"
+              />
+            ))
+          )}
         </div>
-    );
+      </div>
+    </div>
+  );
 }
